@@ -40,7 +40,9 @@ class SnakeRoom extends colyseus.Room {
     }
 
     moveApple(baseLat, baseLng) {
-        this.state.apple.lat = baseLat + (Math.random() - 0.5) * 0.008;
+        let newLat = baseLat + (Math.random() - 0.5) * 0.008;
+        // Clamp apple spawns to prevent them from appearing in the pole kill zones
+        this.state.apple.lat = Math.max(-79, Math.min(79, newLat));
         this.state.apple.lng = baseLng + (Math.random() - 0.5) * 0.008;
     }
 
@@ -56,11 +58,9 @@ class SnakeRoom extends colyseus.Room {
                 newHead.lng = head.lng;
 
                 const score = player.body.length > 5 ? player.body.length - 5 : 0;
-                // Cap the zoom out at level 3
                 const targetZoom = Math.max(3, 18 - (score * 0.06));
                 const scaleFactor = Math.pow(2, 18 - targetZoom); 
                 const dynamicSpeed = baseSpeed * scaleFactor;
-                
                 const latSpeed = dynamicSpeed * Math.cos(head.lat * Math.PI / 180);
 
                 if (player.direction === "up") newHead.lat += latSpeed;
@@ -78,6 +78,11 @@ class SnakeRoom extends colyseus.Room {
             const newHead = newHeads.get(sessionId);
             const mySize = player.body.length;
             let isDead = false;
+
+            // POLE KILL ZONE: Extreme latitudes trigger instant death
+            if (Math.abs(newHead.lat) > 80) {
+                isDead = true;
+            }
 
             this.state.players.forEach((otherPlayer, otherSessionId) => {
                 if (isDead || otherPlayer.body.length === 0) return;
