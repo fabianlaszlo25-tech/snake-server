@@ -8,13 +8,20 @@ const app = express();
 app.use(cors({ origin: "*" })); 
 app.use(express.json());
 
-// HEALTH CHECK: If you visit the Render URL in a browser, you should see this text.
 app.get("/", (req, res) => {
     res.send("GEO SNAKE BACKEND IS ONLINE AND ROUTING TRAFFIC");
 });
 
 const httpServer = createServer(app);
-const gameServer = new Server({ server: httpServer });
+
+// CRITICAL FIX: Colyseus requires independent WebSocket CORS headers
+const gameServer = new Server({ 
+    server: httpServer,
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST", "OPTIONS"]
+    }
+});
 
 gameServer.define("snake_room", SnakeRoom);
 

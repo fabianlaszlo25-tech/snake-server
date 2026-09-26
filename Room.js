@@ -9,11 +9,10 @@ class SnakeRoom extends colyseus.Room {
         this.onMessage("spawn", (client, message) => {
             const player = this.state.players.get(client.sessionId);
             if (player && player.body.length === 0) {
-                // Give player a custom property to track how many segments to grow
                 player.pendingGrowth = 0; 
                 for (let i = 0; i < 5; i++) {
                     const pos = new Position();
-                    pos.lat = message.lat - (i * 0.0001);
+                    pos.lat = message.lat - (i * 0.00004);
                     pos.lng = message.lng;
                     player.body.push(pos);
                 }
@@ -47,6 +46,7 @@ class SnakeRoom extends colyseus.Room {
 
     update(deltaTime) {
         const newHeads = new Map();
+        const baseSpeed = 0.00004;
 
         this.state.players.forEach((player, sessionId) => {
             if (player.body.length > 0) {
@@ -55,12 +55,16 @@ class SnakeRoom extends colyseus.Room {
                 newHead.lat = head.lat;
                 newHead.lng = head.lng;
 
-                // Scale movement speed so the snake doesn't visually slow down when the map zooms out
                 const score = player.body.length > 5 ? player.body.length - 5 : 0;
-                const dynamicSpeed = 0.00015 + (score * 0.000005); 
+                // Cap the zoom out at level 3
+                const targetZoom = Math.max(3, 18 - (score * 0.06));
+                const scaleFactor = Math.pow(2, 18 - targetZoom); 
+                const dynamicSpeed = baseSpeed * scaleFactor;
+                
+                const latSpeed = dynamicSpeed * Math.cos(head.lat * Math.PI / 180);
 
-                if (player.direction === "up") newHead.lat += dynamicSpeed;
-                if (player.direction === "down") newHead.lat -= dynamicSpeed;
+                if (player.direction === "up") newHead.lat += latSpeed;
+                if (player.direction === "down") newHead.lat -= latSpeed;
                 if (player.direction === "left") newHead.lng -= dynamicSpeed;
                 if (player.direction === "right") newHead.lng += dynamicSpeed;
 
@@ -78,13 +82,16 @@ class SnakeRoom extends colyseus.Room {
             this.state.players.forEach((otherPlayer, otherSessionId) => {
                 if (isDead || otherPlayer.body.length === 0) return;
                 const otherSize = otherPlayer.body.length;
-                const startIndex = (sessionId === otherSessionId) ? 1 : 0;
+                const startIndex = (sessionId === otherSessionId) ? 25 : 0; 
                 
+                const otherScore = otherSize > 5 ? otherSize - 5 : 0;
+                const otherTargetZoom = Math.max(3, 18 - (otherScore * 0.06));
+                const scaleFactor = Math.pow(2, 18 - otherTargetZoom);
+                const hitBox = baseSpeed * scaleFactor * 0.8; 
+
                 for (let i = startIndex; i < otherPlayer.body.length; i++) {
                     const distLat = Math.abs(newHead.lat - otherPlayer.body[i].lat);
                     const distLng = Math.abs(newHead.lng - otherPlayer.body[i].lng);
-                    
-                    const hitBox = 0.00005 + (otherSize * 0.000002); 
 
                     if (distLat < hitBox && distLng < hitBox) {
                         if (sessionId !== otherSessionId && mySize >= otherSize * 2) {
@@ -103,16 +110,19 @@ class SnakeRoom extends colyseus.Room {
                 player.body.unshift(newHead);
 
                 const score = mySize > 5 ? mySize - 5 : 0;
-                const appleHitbox = 0.0004 + (score * 0.00002); // Larger physical hitbox
+                const targetZoom = Math.max(3, 18 - (score * 0.06));
+                const scaleFactor = Math.pow(2, 18 - targetZoom);
+                const appleHitbox = baseSpeed * scaleFactor * 3; 
+                
                 const distLat = Math.abs(newHead.lat - this.state.apple.lat);
                 const distLng = Math.abs(newHead.lng - this.state.apple.lng);
 
                 if (distLat < appleHitbox && distLng < appleHitbox) {
-                    this.moveApple(newHead.lat, newHead.lng);
-                    player.pendingGrowth = (player.pendingGrowth || 0) + 10; // Grows noticeably longer
+                    const spawnRadius = 0.003 * scaleFactor;
+                    this.moveApple(newHead.lat + spawnRadius, newHead.lng + spawnRadius);
+                    player.pendingGrowth = (player.pendingGrowth || 0) + 10;
                 }
 
-                // Process tail logic
                 if (player.pendingGrowth > 0) {
                     player.pendingGrowth--;
                 } else {
