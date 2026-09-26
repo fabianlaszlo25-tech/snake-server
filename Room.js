@@ -55,8 +55,10 @@ class SnakeRoom extends colyseus.Room {
         const apple = this.state.apples.get(appleId);
         if (apple) {
             let newLat = baseLat + (Math.random() > 0.5 ? 1 : -1) * (spawnRadius + Math.random() * spawnRadius);
-            apple.lat = Math.max(-70, Math.min(70, newLat));
-            apple.lng = baseLng + (Math.random() > 0.5 ? 1 : -1) * (spawnRadius + Math.random() * spawnRadius);
+            apple.lat = Math.max(-65, Math.min(65, newLat));
+            
+            let newLng = baseLng + (Math.random() > 0.5 ? 1 : -1) * (spawnRadius + Math.random() * spawnRadius);
+            apple.lng = Math.max(-165, Math.min(165, newLng));
         }
     }
 
@@ -93,7 +95,7 @@ class SnakeRoom extends colyseus.Room {
             const mySize = player.body.length;
             let isDead = false;
 
-            if (Math.abs(newHead.lat) > 80) {
+            if (Math.abs(newHead.lat) > 80 || Math.abs(newHead.lng) > 178) {
                 isDead = true;
             }
 
