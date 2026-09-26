@@ -5,8 +5,18 @@ const { createServer } = require("http");
 const { SnakeRoom } = require("./Room");
 
 const app = express();
-app.use(cors()); 
-app.use(express.json());
+
+// Setting origin to true automatically echoes the requesting origin (GitHub Pages) 
+// to satisfy the strict credentials policy without a wildcard.
+const corsOptions = {
+    origin: true, 
+    credentials: true
+};
+
+app.use(cors(corsOptions)); 
+
+// CRITICAL: No app.use(express.json()) here. 
+// We are leaving the HTTP stream untouched so Colyseus can parse it.
 
 app.get("/", (req, res) => {
     res.send("GEO SNAKE BACKEND IS ONLINE");
@@ -14,14 +24,9 @@ app.get("/", (req, res) => {
 
 const httpServer = createServer(app);
 
-// CRITICAL FIX: Colyseus requires its own CORS policy for the HTTP matchmaking phase
 const gameServer = new Server({ 
     server: httpServer,
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization", "Origin", "Accept"]
-    }
+    cors: corsOptions
 });
 
 gameServer.define("snake_room", SnakeRoom);
