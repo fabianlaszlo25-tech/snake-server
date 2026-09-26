@@ -100,7 +100,7 @@ class SnakeRoom extends colyseus.Room {
             this.state.players.forEach((otherPlayer, otherSessionId) => {
                 if (isDead || otherPlayer.body.length === 0) return;
                 const otherSize = otherPlayer.body.length;
-                const startIndex = (sessionId === otherSessionId) ? 25 : 0; 
+                const startIndex = (sessionId === otherSessionId) ? 15 : 0; 
                 
                 const otherScore = otherSize > 5 ? otherSize - 5 : 0;
                 const otherTargetZoom = Math.max(3, 18 - (otherScore * 0.06));
@@ -122,8 +122,12 @@ class SnakeRoom extends colyseus.Room {
             });
 
             if (isDead) {
+                const finalScore = mySize > 5 ? mySize - 5 : 0;
                 while(player.body.length > 0) player.body.pop();
                 player.pendingGrowth = 0;
+                
+                const deadClient = this.clients.find(c => c.sessionId === sessionId);
+                if (deadClient) deadClient.send("died", finalScore);
             } else {
                 player.body.unshift(newHead);
 
@@ -138,7 +142,6 @@ class SnakeRoom extends colyseus.Room {
 
                     if (distLat < appleHitbox && distLng < appleHitbox) {
                         const spawnRadius = 0.003 * scaleFactor;
-                        
                         const ownerId = appleId.split('_')[0];
                         const owner = this.state.players.get(ownerId);
                         
