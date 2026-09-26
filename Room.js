@@ -38,8 +38,11 @@ class SnakeRoom extends colyseus.Room {
     onJoin(client) {
         this.state.players.set(client.sessionId, new Player());
         
-        this.state.apples.set(client.sessionId + '_1', new Position());
-        this.state.apples.set(client.sessionId + '_2', new Position());
+        const a1 = new Position(); a1.lat = 0; a1.lng = 0;
+        const a2 = new Position(); a2.lat = 0; a2.lng = 0;
+        
+        this.state.apples.set(client.sessionId + '_1', a1);
+        this.state.apples.set(client.sessionId + '_2', a2);
     }
 
     onLeave(client) {
