@@ -4,7 +4,9 @@ const { GameState, Player, Position } = require("./State");
 class SnakeRoom extends colyseus.Room {
     onCreate(options) {
         this.setState(new GameState());
-        this.setSimulationInterval((deltaTime) => this.update(deltaTime), 33);
+        
+        this.setPatchRate(16); 
+        this.setSimulationInterval((deltaTime) => this.update(deltaTime), 16);
 
         this.onMessage("spawn", (client, message) => {
             const player = this.state.players.get(client.sessionId);
@@ -12,11 +14,13 @@ class SnakeRoom extends colyseus.Room {
                 player.pendingGrowth = 0; 
                 for (let i = 0; i < 5; i++) {
                     const pos = new Position();
-                    pos.lat = message.lat - (i * 0.00004);
+                    pos.lat = message.lat - (i * 0.000018); 
                     pos.lng = message.lng;
                     player.body.push(pos);
                 }
-                this.moveApple(message.lat, message.lng);
+                
+                this.moveApple(client.sessionId + '_1', message.lat, message.lng, 0.008);
+                this.moveApple(client.sessionId + '_2', message.lat, message.lng, 0.008);
             }
         });
 
@@ -33,22 +37,29 @@ class SnakeRoom extends colyseus.Room {
 
     onJoin(client) {
         this.state.players.set(client.sessionId, new Player());
+        
+        this.state.apples.set(client.sessionId + '_1', new Position());
+        this.state.apples.set(client.sessionId + '_2', new Position());
     }
 
     onLeave(client) {
         this.state.players.delete(client.sessionId);
+        this.state.apples.delete(client.sessionId + '_1');
+        this.state.apples.delete(client.sessionId + '_2');
     }
 
-    moveApple(baseLat, baseLng) {
-        let newLat = baseLat + (Math.random() - 0.5) * 0.008;
-        // Enforce a strict 70-degree safe zone for online apples
-        this.state.apple.lat = Math.max(-70, Math.min(70, newLat));
-        this.state.apple.lng = baseLng + (Math.random() - 0.5) * 0.008;
+    moveApple(appleId, baseLat, baseLng, spawnRadius) {
+        const apple = this.state.apples.get(appleId);
+        if (apple) {
+            let newLat = baseLat + (Math.random() > 0.5 ? 1 : -1) * (spawnRadius + Math.random() * spawnRadius);
+            apple.lat = Math.max(-70, Math.min(70, newLat));
+            apple.lng = baseLng + (Math.random() > 0.5 ? 1 : -1) * (spawnRadius + Math.random() * spawnRadius);
+        }
     }
 
     update(deltaTime) {
         const newHeads = new Map();
-        const baseSpeed = 0.00004;
+        const baseSpeed = 0.000018;
 
         this.state.players.forEach((player, sessionId) => {
             if (player.body.length > 0) {
@@ -116,16 +127,27 @@ class SnakeRoom extends colyseus.Room {
                 const score = mySize > 5 ? mySize - 5 : 0;
                 const targetZoom = Math.max(3, 18 - (score * 0.06));
                 const scaleFactor = Math.pow(2, 18 - targetZoom);
-                const appleHitbox = baseSpeed * scaleFactor * 3; 
+                const appleHitbox = baseSpeed * scaleFactor * 3.5; 
                 
-                const distLat = Math.abs(newHead.lat - this.state.apple.lat);
-                const distLng = Math.abs(newHead.lng - this.state.apple.lng);
+                this.state.apples.forEach((apple, appleId) => {
+                    const distLat = Math.abs(newHead.lat - apple.lat);
+                    const distLng = Math.abs(newHead.lng - apple.lng);
 
-                if (distLat < appleHitbox && distLng < appleHitbox) {
-                    const spawnRadius = 0.003 * scaleFactor;
-                    this.moveApple(newHead.lat + spawnRadius, newHead.lng + spawnRadius);
-                    player.pendingGrowth = (player.pendingGrowth || 0) + 10;
-                }
+                    if (distLat < appleHitbox && distLng < appleHitbox) {
+                        const spawnRadius = 0.003 * scaleFactor;
+                        
+                        const ownerId = appleId.split('_')[0];
+                        const owner = this.state.players.get(ownerId);
+                        
+                        if (owner && owner.body.length > 0) {
+                            this.moveApple(appleId, owner.body[0].lat, owner.body[0].lng, spawnRadius);
+                        } else {
+                            this.moveApple(appleId, newHead.lat, newHead.lng, spawnRadius);
+                        }
+                        
+                        player.pendingGrowth = (player.pendingGrowth || 0) + 10;
+                    }
+                });
 
                 if (player.pendingGrowth > 0) {
                     player.pendingGrowth--;

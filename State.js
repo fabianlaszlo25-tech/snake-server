@@ -17,11 +17,10 @@ class GameState extends Schema {
     constructor() {
         super();
         this.players = new MapSchema();
-        this.apple = new Position();
-        this.apple.lat = 47.4979; 
-        this.apple.lng = 19.0402;
+        // Convert single apple to a dynamic Map for multiple apples
+        this.apples = new MapSchema(); 
     }
 }
-schema.defineTypes(GameState, { players: { map: Player }, apple: Position });
+schema.defineTypes(GameState, { players: { map: Player }, apples: { map: Position } });
 
 module.exports = { GameState, Player, Position };
