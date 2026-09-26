@@ -13,7 +13,16 @@ app.get("/", (req, res) => {
 });
 
 const httpServer = createServer(app);
-const gameServer = new Server({ server: httpServer });
+
+// CRITICAL FIX: Colyseus requires its own CORS policy for the HTTP matchmaking phase
+const gameServer = new Server({ 
+    server: httpServer,
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization", "Origin", "Accept"]
+    }
+});
 
 gameServer.define("snake_room", SnakeRoom);
 
