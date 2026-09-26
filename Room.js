@@ -41,8 +41,8 @@ class SnakeRoom extends colyseus.Room {
 
     moveApple(baseLat, baseLng) {
         let newLat = baseLat + (Math.random() - 0.5) * 0.008;
-        // Clamp apple spawns to prevent them from appearing in the pole kill zones
-        this.state.apple.lat = Math.max(-79, Math.min(79, newLat));
+        // Enforce a strict 70-degree safe zone for online apples
+        this.state.apple.lat = Math.max(-70, Math.min(70, newLat));
         this.state.apple.lng = baseLng + (Math.random() - 0.5) * 0.008;
     }
 
@@ -79,7 +79,6 @@ class SnakeRoom extends colyseus.Room {
             const mySize = player.body.length;
             let isDead = false;
 
-            // POLE KILL ZONE: Extreme latitudes trigger instant death
             if (Math.abs(newHead.lat) > 80) {
                 isDead = true;
             }

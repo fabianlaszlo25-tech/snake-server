@@ -5,27 +5,18 @@ const { createServer } = require("http");
 const { SnakeRoom } = require("./Room");
 
 const app = express();
-app.use(cors({ origin: "*" })); 
+app.use(cors()); 
 app.use(express.json());
 
 app.get("/", (req, res) => {
-    res.send("GEO SNAKE BACKEND IS ONLINE AND ROUTING TRAFFIC");
+    res.send("GEO SNAKE BACKEND IS ONLINE");
 });
 
 const httpServer = createServer(app);
-
-// CRITICAL FIX: Colyseus requires independent WebSocket CORS headers
-const gameServer = new Server({ 
-    server: httpServer,
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST", "OPTIONS"]
-    }
-});
+const gameServer = new Server({ server: httpServer });
 
 gameServer.define("snake_room", SnakeRoom);
 
 const port = process.env.PORT || 2567;
 gameServer.listen(port);
-
-console.log(`Server is listening on port ${port}`);
+console.log(`Server listening on port ${port}`);
